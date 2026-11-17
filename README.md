@@ -1,65 +1,116 @@
 # 🛡️ HumanizerMaster
 
-> **Self-Adaptive AI Text Humanizer & Persona Cloning Engine**  
-> *100% Serverless, Zero-API, Pure Client-Side Anti-AI Detection Engine (Turnitin, GPTZero, CopyLeaks Shield)*
+> **Adaptive Anti-AI Writing & Voice Cloning Engine**  
+> *100% Client-Side, Zero Server, No API Keys Required — Turnitin, GPTZero & CopyLeaks Shield*
+
+🌐 **Live Web Application:** [https://borni12.github.io/humanizer-master/](https://borni12.github.io/humanizer-master/)
 
 ---
 
-## 🌟 Overview
+## 🌟 About the Application
 
-**HumanizerMaster** is a privacy-first, zero-server text transformation engine. It is specifically engineered to bypass AI detection software like **Turnitin, GPTZero, CopyLeaks, and Originality.ai** by cloning an author's authentic **Style DNA** (burstiness pacing, signature vocabulary, and cadence) rather than using crude synonym substitution.
+**HumanizerMaster** is an open-source, client-side web application designed to transform AI-generated drafts into natural, human-sounding prose that bypasses advanced AI detection systems like **Turnitin, GPTZero, CopyLeaks, and Originality.ai**.
 
-It operates **100% inside your browser** (client-side JavaScript). Zero data leaves your computer, zero API keys are required, and there are zero usage limits.
-
----
-
-## ✨ Key Features
-
-- 🧬 **Few-Shot Style DNA & Vocabulary Cloner**:
-  - Upload or paste genuine writing samples (PDF, DOCX, TXT).
-  - Automatically mines your signature vocabulary (শব্দ চয়ন), favorite transitions, and sentence pacing.
-- 🎓 **Peer-Reviewed Academic Humanizer Protocol**:
-  - Implements the 6-layer editing protocol from [AIScientists-Dev/academic-humanizer](https://github.com/AIScientists-Dev/academic-humanizer) (developed by NSF & NIH funded researchers).
-  - Mode 1: **Adaptive Style Transfer** (general writing, blogs, essays).
-  - Mode 2: **Academic Paper & Journal** (ICLR, NeurIPS, Nature, arXiv).
-  - Mode 3: **Grant Proposal Mode** (NSF CAREER, NIH R01).
-- 🎯 **Turnitin & GPTZero Shield**:
-  - **Burstiness Modulation**: Enforces high variance between short punchy sentences and compound thoughts.
-  - **150+ AI Cliché Sanitizer**: Strips dead giveaway tokens (*"delve"*, *"tapestry"*, *"testament"*, *"furthermore"*, *"in conclusion"*, *"pivotal"*, etc.).
-  - **Citation & Math Armor**: Equations ($...$) and citations (`\cite{...}`, `[1, 2]`) are 100% preserved.
-- 📂 **Client-Side File Ingestion & Export**:
-  - Import: `.docx`, `.pdf`, `.txt`, `.md` directly in the browser via client-side parsers.
-  - Export: One-click export to Word (`.doc`), Markdown (`.md`), or Plain Text (`.txt`).
-- ⚡ **100% Serverless & Static**:
-  - Runs natively on **GitHub Pages**, **Cloudflare Pages**, **Vercel**, or locally in any web browser without installing Python or dependencies.
+Unlike conventional humanizers that rely on crude synonym substitution or external paid APIs, HumanizerMaster operates on **stylometric restructuring** and **author voice cloning**:
+- **Burstiness Modulation:** Adjusts sentence length variance so writing follows natural human rhythm rather than rigid, machine-like consistency.
+- **AI Marker Elimination:** Purges over 150+ dead giveaway words and formulaic constructions favored by LLMs.
+- **Voice Cloning (Style DNA):** Extracts vocabulary preferences, transitions, and pacing from your genuine writing samples and applies them to incoming drafts.
+- **Privacy First:** 100% of the processing happens directly in your browser. No text ever leaves your machine.
 
 ---
 
-## 🚀 Live Deployment Options
+## 🚀 Core Features & Modules
 
-### Option 1: GitHub Pages (Recommended)
-1. Fork or push this repository to GitHub.
-2. Go to **Settings** -> **Pages**.
-3. Under **Branch**, select `main` and root `/` folder.
-4. Click **Save**. Your site will be live at `https://<username>.github.io/<repo-name>/`.
+### 1. 🪄 Humanize Studio
+The primary split-screen editing and transformation environment:
+- **Direct File Import:** Load drafts directly from **Word (`.docx`)**, **PDF (`.pdf`)**, **Markdown (`.md`)**, or **Plain Text (`.txt`)** files using built-in client-side parsers.
+- **Three Protocol Modes:**
+  - 🧬 **Adaptive Style Transfer:** Infuses your custom cloned writing persona or selected profile.
+  - 🎓 **Academic Paper / Journal:** Tailored for research papers (ICLR, NeurIPS, Nature, arXiv) by removing promotional hype and ensuring rigorous academic tone.
+  - 🏛️ **Grant Proposal Mode:** Optimized for NSF, NIH, and scientific research funding applications.
+- **Pre-Humanize Risk Check:** Click **"Check AI Risk First"** to inspect your draft before applying transformations.
+- **One-Click Export:** Download transformed text as **Word (`.doc`)**, **Markdown (`.md`)**, or **Plain Text (`.txt`)**, or copy directly to clipboard.
 
-*(Note: On GitHub Free accounts, GitHub Pages requires a public repository. If you have GitHub Pro, private repositories are supported).*
+### 2. 🧬 Style DNA Cloner
+A persona extraction module that reverse-engineers your authentic writing habits:
+- **Sample Ingestion:** Upload an existing essay, paper, article, or past writing sample (`.docx`, `.pdf`, `.txt`, `.md`).
+- **Feature Extraction:**
+  - Sentence length statistics and cadence.
+  - Signature vocabulary and word preferences.
+  - Favorite transitional phrases and discourse markers.
+  - Contraction and punctuation tendencies.
+- **Local Persistence:** Saves custom profiles directly in your browser's `localStorage` for instant reuse.
 
-### Option 2: Cloudflare Pages / Vercel (100% Free with Private GitHub Repo)
-If you want to keep your GitHub repository **100% Private (Secret)** and still host a live URL for free:
-1. Push this project to a **Private** GitHub repository.
-2. Go to [Cloudflare Pages](https://pages.cloudflare.com/) or [Vercel](https://vercel.com/) (both free forever).
-3. Connect your private GitHub repository with 1-click.
-4. Framework preset: Select `Other` or `Static HTML`.
-5. Deploy! You will receive an instant live URL (e.g., `https://humanizer-master.pages.dev`).
+### 3. 📚 Profiles Library
+Manage and switch between pre-configured and custom-cloned writing personas:
+- **Academic Scholar:** Measured, formal, objective tone with conservative assertions.
+- **ICLR / NeurIPS Researcher:** Concise, rigorous computer science and machine learning paper style.
+- **NSF / NIH Grant Writer:** High-impact, objective grant proposal phrasing.
+- **Conversational Blogger:** Casual, punchy, engaging narrative with contractions.
+- **Tech Executive:** Authoritative, strategic, and concise business communication.
+- **Custom Personas:** View metrics, switch active profile, or delete anytime.
+
+### 4. 📊 Live Stylometric & AI Detection Audit Panel
+Real-time report simulating Turnitin, GPTZero, and CopyLeaks detection algorithms:
+- **Simulated AI Risk Score (%):** Predicts detection risk before and after humanization.
+- **Burstiness Index:** Measures variance in sentence length. High variance indicates authentic human writing.
+- **AI Clichés Purged:** Identifies and highlights flagged buzzwords (e.g., *"delve"*, *"tapestry"*, *"testament"*, *"moreover"*, *"pivotal"*).
+- **Readability Index:** Calculates Flesch Reading Ease score to ensure smooth comprehension.
 
 ---
 
-## 💻 Local Usage
+## 🔬 6-Layer Anti-AI Transformation Engine
 
-Simply double-click `index.html` to open it in Chrome, Edge, Safari, or Firefox!
+HumanizerMaster implements an algorithmic multi-pass transformation pipeline based on research from [academic-humanizer](https://github.com/AIScientists-Dev/academic-humanizer):
+
+```
+[ AI-Generated Draft / Uploaded File ]
+                  │
+                  ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 1: Formulaic Opener & Cliché Elimination              │
+│ (Removes "In today's fast-paced world", "It is crucial", etc)│
+├─────────────────────────────────────────────────────────────┤
+│ Layer 2: Overclaiming & Promotional Verb Downgrading        │
+│ (Transforms "pivotal", "revolutionary", "delve", etc)       │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 3: Punctuation & Em-Dash Sanitization                 │
+│ (Purges excessive em-dashes '—' and robotic colons)         │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 4: Burstiness & Clause Restructuring                  │
+│ (Splits monotonic stacked sentences into human rhythm)      │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 5: Author Style DNA & Signature Vocabulary Injection   │
+│ (Blends author's favored transitions and sentence habits)   │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 6: Citation & Math Armor Protection                   │
+│ (100% preserves LaTeX $...$, \cite{...}, and [1, 2] markers) │
+└─────────────────────────────────────────────────────────────┘
+                  │
+                  ▼
+[ Undetectable, Authentic Humanized Text ]
+```
+
+---
+
+## 🔒 Privacy & Architecture
+
+- **Zero Server Communication:** No text or documents are uploaded to third-party cloud servers or external AI models.
+- **Zero API Keys:** Works without OpenAI, Anthropic, or any third-party credentials.
+- **No Rate Limits:** Transform unlimited words, essays, papers, and documents without subscription paywalls.
+- **Client-Side Document Parsing:** `.docx` files are parsed via Mammoth.js and `.pdf` files via PDF.js entirely inside the browser's JavaScript sandbox.
+
+---
+
+## 💻 Tech Stack
+
+- **Frontend:** HTML5, Modern Vanilla JavaScript (ES6+), Tailwind CSS, Lucide Icons.
+- **Document Parsers:** Mammoth.js (Word), PDF.js (PDF documents).
+- **Stylometrics:** Custom pure-JS algorithmic engine (`humanizer-engine.js`).
+- **Hosting:** GitHub Pages (Static Web App).
 
 ---
 
 ## 📄 License
-MIT License. Free for personal, academic, and commercial use.
+
+MIT License. Free for personal, academic, and professional use.
