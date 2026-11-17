@@ -17,6 +17,11 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   </script>
+  <!-- docx.js for client-side genuine binary .docx generation -->
+  <script src="https://cdn.jsdelivr.net/npm/docx/build/index.umd.js"></script>
+  <!-- html2pdf.js for authentic styled PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <link rel="stylesheet" href="./style.css">
   <script>
     tailwind.config = {
@@ -99,7 +104,7 @@
             <i data-lucide="user-check" class="w-3.5 h-3.5 mr-1.5 text-emerald-400"></i>
             Active Style Profile:
           </span>
-          <select id="profile-select" class="bg-dark-900 border border-dark-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+          <select id="profile-select" onchange="onProfileChange()" class="bg-dark-900 border border-dark-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
             <!-- Populated dynamically via JS -->
           </select>
           <button onclick="switchTab('profiler')" class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition flex items-center space-x-1.5 shadow-sm">
@@ -109,9 +114,16 @@
         </div>
 
         <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+          <!-- Voice Clone Fidelity Stat Pill -->
+          <div class="flex items-center space-x-1.5 bg-dark-900 border border-emerald-500/30 px-3 py-1.5 rounded-xl shadow-sm">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span class="text-xs text-slate-400">Voice Match:</span>
+            <span id="studio-voice-match-pill" class="text-xs font-bold text-emerald-400">98.4% (Authentic)</span>
+          </div>
+
           <span class="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center">
             <i data-lucide="graduation-cap" class="w-3.5 h-3.5 mr-1.5 text-cyan-400"></i>
-            Protocol Mode:
+            Protocol:
           </span>
           <select id="protocol-mode-select" class="bg-dark-900 border border-dark-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
             <option value="adaptive">🧬 Adaptive Style Transfer (Clone Author Voice)</option>
@@ -121,7 +133,7 @@
 
           <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-semibold flex items-center space-x-1">
             <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i>
-            <span>Turnitin & GPTZero Shield Active</span>
+            <span>Turnitin & GPTZero Shield</span>
           </span>
         </div>
       </div>
@@ -134,14 +146,14 @@
           <div class="p-3.5 bg-dark-800/60 border-b border-dark-700/60 flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-              <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Input Text (Draft / AI Generated)</span>
+              <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Input Text (Draft / Document)</span>
             </div>
             
             <div class="flex items-center space-x-2">
               <!-- Upload Button -->
               <label for="file-upload-input" class="cursor-pointer text-xs font-medium bg-dark-700/60 hover:bg-dark-700 text-slate-300 px-2.5 py-1 rounded-lg border border-dark-600 flex items-center space-x-1.5 transition">
                 <i data-lucide="upload" class="w-3.5 h-3.5 text-cyan-400"></i>
-                <span>Upload (PDF/DOCX/TXT)</span>
+                <span id="file-upload-label">Upload (.docx, .pdf, .txt, .md)</span>
               </label>
               <input type="file" id="file-upload-input" class="hidden" accept=".txt,.md,.docx,.pdf" onchange="handleFileUpload(event)">
               <button onclick="clearInput()" class="text-xs text-slate-400 hover:text-red-400 p-1" title="Clear Text">
@@ -151,12 +163,13 @@
           </div>
 
           <div class="p-4 flex-1 flex flex-col">
-            <textarea id="input-textarea" placeholder="Paste your AI-generated text, draft, or article here... Or drag-and-drop a document (.txt, .md, .docx, .pdf)." class="w-full h-80 bg-transparent text-slate-200 text-sm focus:outline-none resize-none leading-relaxed placeholder:text-slate-500"></textarea>
+            <textarea id="input-textarea" placeholder="Paste your draft, AI text, or upload a document (.docx, .pdf, .txt, .md). The document's original formatting (headings, paragraphs, bullet points) will be completely preserved upon export!" class="w-full h-80 bg-transparent text-slate-200 text-sm focus:outline-none resize-none leading-relaxed placeholder:text-slate-500"></textarea>
             
             <div class="pt-3 border-t border-dark-700/40 flex items-center justify-between text-xs text-slate-400">
               <div class="flex items-center space-x-4">
                 <span>Words: <strong id="input-word-count" class="text-slate-200">0</strong></span>
                 <span>Chars: <strong id="input-char-count" class="text-slate-200">0</strong></span>
+                <span id="input-doc-structure-tag" class="hidden text-[10px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/20 font-medium">Doc Structure Tracked</span>
               </div>
               <button onclick="runAuditOnly()" class="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1">
                 <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
@@ -171,7 +184,7 @@
           <div class="p-3.5 bg-dark-800/60 border-b border-dark-700/60 flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Humanized Result (Undetectable)</span>
+              <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Humanized Result (Undetectable & Cloned)</span>
             </div>
 
             <div class="flex items-center space-x-2">
@@ -182,24 +195,38 @@
 
               <!-- Export Dropdown -->
               <div class="relative inline-block text-left">
-                <button onclick="toggleExportMenu()" class="text-xs font-medium bg-dark-700/60 hover:bg-dark-700 text-slate-300 px-2.5 py-1 rounded-lg border border-dark-600 flex items-center space-x-1.5 transition">
-                  <i data-lucide="download" class="w-3.5 h-3.5 text-cyan-400"></i>
-                  <span>Export</span>
+                <button onclick="toggleExportMenu()" class="text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg flex items-center space-x-1.5 transition shadow-sm">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>Export Formats</span>
                   <i data-lucide="chevron-down" class="w-3 h-3"></i>
                 </button>
-                <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-32 rounded-xl shadow-2xl bg-dark-800 border border-dark-700 py-1 z-50">
-                  <button onclick="exportResult('docx')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-dark-700 flex items-center space-x-2">
-                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Word (.doc)</span>
-                  </button>
-                  <button onclick="exportResult('md')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-dark-700 flex items-center space-x-2">
-                    <i data-lucide="file-code" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Markdown (.md)</span>
-                  </button>
-                  <button onclick="exportResult('txt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-dark-700 flex items-center space-x-2">
-                    <i data-lucide="file" class="w-3.5 h-3.5 text-emerald-400"></i>
-                    <span>Plain (.txt)</span>
-                  </button>
+                <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-xl shadow-2xl bg-dark-800 border border-dark-700 py-1.5 z-50 divide-y divide-dark-700/40">
+                  <div class="py-1">
+                    <button onclick="exportResult('docx')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-dark-700 hover:text-emerald-400 flex items-center space-x-2 transition">
+                      <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
+                      <div>
+                        <div class="font-bold">Word Document (.docx)</div>
+                        <div class="text-[10px] text-slate-400">Exact layout, headings & styles</div>
+                      </div>
+                    </button>
+                    <button onclick="exportResult('pdf')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-dark-700 hover:text-emerald-400 flex items-center space-x-2 transition">
+                      <i data-lucide="file" class="w-4 h-4 text-red-400"></i>
+                      <div>
+                        <div class="font-bold">Adobe PDF (.pdf)</div>
+                        <div class="text-[10px] text-slate-400">Print-ready formatted document</div>
+                      </div>
+                    </button>
+                  </div>
+                  <div class="py-1">
+                    <button onclick="exportResult('md')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-dark-700 flex items-center space-x-2">
+                      <i data-lucide="file-code" class="w-3.5 h-3.5 text-purple-400"></i>
+                      <span>Markdown (.md)</span>
+                    </button>
+                    <button onclick="exportResult('txt')" class="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-dark-700 flex items-center space-x-2">
+                      <i data-lucide="align-left" class="w-3.5 h-3.5 text-emerald-400"></i>
+                      <span>Plain Text (.txt)</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -237,7 +264,7 @@
 
       <!-- Live Audit / AI Risk Benchmark Panel -->
       <div id="metrics-panel" class="hidden bg-dark-850 p-6 rounded-2xl border border-dark-700/60 shadow-xl space-y-6">
-        <div class="flex items-center justify-between border-b border-dark-700/60 pb-3">
+        <div class="flex items-center justify-between border-b border-dark-700/60 pb-3 flex-wrap gap-2">
           <div class="flex items-center space-x-2">
             <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i>
             <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wide">AI Detection & Stylometric Audit Report</h3>
@@ -245,8 +272,26 @@
           <span class="text-xs text-slate-400">Simulating Turnitin, GPTZero & CopyLeaks</span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- Metric 1: AI Risk Score -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- Metric 1: Voice Clone Match % -->
+          <div class="bg-dark-900 p-4 rounded-xl border border-emerald-500/30 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-slate-400 font-medium">Voice Clone Match</span>
+              <span class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold">DNA Match</span>
+            </div>
+            <div class="flex items-baseline space-x-2">
+              <span id="metric-voice-fidelity" class="text-2xl font-black text-emerald-400">98.4%</span>
+              <span id="metric-fidelity-label" class="text-xs font-semibold text-emerald-300">High Fidelity</span>
+            </div>
+            <div class="w-full bg-dark-800 h-2 rounded-full mt-2 overflow-hidden">
+              <div id="metric-fidelity-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700" style="width: 98.4%"></div>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-2 space-y-0.5" id="metric-fidelity-breakdown">
+              <div>Rhythm: <span id="metric-rhythm-match" class="text-emerald-400 font-bold">98%</span> | Vocab: <span id="metric-vocab-match" class="text-cyan-400 font-bold">97%</span></div>
+            </div>
+          </div>
+
+          <!-- Metric 2: AI Risk Score -->
           <div class="bg-dark-900 p-4 rounded-xl border border-dark-700/50">
             <div class="text-xs text-slate-400 font-medium mb-1">Simulated AI Risk</div>
             <div class="flex items-baseline space-x-2">
@@ -259,7 +304,7 @@
             <div class="text-[11px] text-slate-500 mt-2" id="metric-risk-comparison">Reduced by 85%</div>
           </div>
 
-          <!-- Metric 2: Burstiness (Variance) -->
+          <!-- Metric 3: Burstiness (Variance) -->
           <div class="bg-dark-900 p-4 rounded-xl border border-dark-700/50">
             <div class="text-xs text-slate-400 font-medium mb-1">Burstiness (Sentence Rhythm)</div>
             <div class="flex items-baseline space-x-2">
@@ -269,7 +314,7 @@
             <p class="text-[11px] text-slate-500 mt-2">Human writing varies wildly in length. AI is rigid.</p>
           </div>
 
-          <!-- Metric 3: AI Marker Words Purged -->
+          <!-- Metric 4: AI Marker Words Purged -->
           <div class="bg-dark-900 p-4 rounded-xl border border-dark-700/50">
             <div class="text-xs text-slate-400 font-medium mb-1">AI Clichés Purged</div>
             <div class="flex items-baseline space-x-2">
@@ -281,7 +326,7 @@
             </div>
           </div>
 
-          <!-- Metric 4: Readability -->
+          <!-- Metric 5: Readability -->
           <div class="bg-dark-900 p-4 rounded-xl border border-dark-700/50">
             <div class="text-xs text-slate-400 font-medium mb-1">Readability Index</div>
             <div class="flex items-baseline space-x-2">
@@ -297,6 +342,41 @@
 
     <!-- TAB 2: STYLE DNA CLONER -->
     <section id="view-profiler" class="hidden space-y-6">
+      
+      <!-- Interactive Calibration Exercise Banner -->
+      <div class="bg-gradient-to-r from-dark-850 via-dark-800 to-dark-850 p-6 rounded-2xl border border-emerald-500/30 shadow-xl space-y-4">
+        <div class="flex items-start justify-between flex-wrap gap-4">
+          <div class="max-w-2xl">
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              Standard Calibration Exercise (Read & Rewrite)
+            </span>
+            <h2 class="text-base font-bold text-slate-100 mt-2 flex items-center space-x-2">
+              <i data-lucide="book-open" class="w-4 h-4 text-emerald-400"></i>
+              <span>Don't have an existing document? Read a passage & rewrite it in your own words!</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+              Read one of the standard calibration passages below for 1 minute. Then, in the box below, summarize or rewrite its core idea in 2–3 paragraphs using your natural vocabulary, favorite transition words, and everyday sentence pacing. The engine will extract your authentic <strong>Style DNA</strong>!
+            </p>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <select id="calibration-select" onchange="onSelectCalibrationPrompt()" class="bg-dark-900 border border-dark-700 text-slate-200 text-xs rounded-xl px-3 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none">
+              <!-- Dynamically populated from CALIBRATION_PROMPTS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Calibration Prompt Viewer Card -->
+        <div id="calibration-viewer" class="bg-dark-900/90 p-4 rounded-xl border border-dark-700 text-xs text-slate-300 leading-relaxed space-y-2">
+          <div class="flex items-center justify-between text-slate-400 border-b border-dark-700/60 pb-2">
+            <span class="font-semibold text-emerald-400" id="calibration-prompt-title">1. Artificial Intelligence & Human Autonomy</span>
+            <span class="text-[11px] text-slate-500">Read & Rewrite in 2-3 paragraphs below</span>
+          </div>
+          <p id="calibration-prompt-body" class="italic text-slate-300"></p>
+        </div>
+      </div>
+
+      <!-- Main Profiler Box -->
       <div class="bg-dark-850 p-6 rounded-2xl border border-dark-700/60 shadow-xl space-y-6">
         <div>
           <h2 class="text-lg font-bold text-slate-100 flex items-center space-x-2">
@@ -304,18 +384,18 @@
             <span>Style DNA Cloner (Voice & Vocabulary Extraction)</span>
           </h2>
           <p class="text-xs text-slate-400 mt-1">
-            Feed any writing sample (an essay, email, article, or paragraph). The system will reverse-engineer your signature vocabulary, sentence pacing, and stylistic habits.
+            Feed any writing sample (your rewritten calibration passage, or upload your past essay, thesis, email, or article).
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wide mb-1.5">Profile Name</label>
-            <input type="text" id="profiler-name-input" placeholder="e.g., My Personal Voice, Professor Watson, Tech Blogger" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none">
+            <input type="text" id="profiler-name-input" placeholder="e.g., Bornil Personal Voice, Academic Researcher" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wide mb-1.5">Author Context / Notes (Optional)</label>
-            <input type="text" id="profiler-notes-input" placeholder="e.g., First-person essay style, uses dry humor, short punchy arguments" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none">
+            <input type="text" id="profiler-notes-input" placeholder="e.g., Uses direct arguments, punchy vocabulary, specific transitions" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none">
           </div>
         </div>
 
@@ -323,24 +403,24 @@
           <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
             <div class="flex items-center space-x-2">
               <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wide">Author's Sample Writing</label>
-              <span class="text-[11px] text-slate-500">(Paste text below or upload your past document)</span>
+              <span class="text-[11px] text-slate-500">(Your rewritten passage or past document)</span>
             </div>
             
             <div class="flex items-center space-x-2">
               <label for="profiler-file-upload-input" class="cursor-pointer text-xs font-semibold bg-dark-700/80 hover:bg-emerald-600 hover:text-white text-slate-200 px-3 py-1.5 rounded-xl border border-dark-600 flex items-center space-x-1.5 transition shadow-sm">
                 <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-emerald-400"></i>
-                <span id="profiler-upload-label">Upload My Document (.pdf, .docx, .txt)</span>
+                <span id="profiler-upload-label">Upload My Document (.docx, .pdf, .txt)</span>
               </label>
               <input type="file" id="profiler-file-upload-input" class="hidden" accept=".txt,.md,.docx,.pdf" onchange="handleProfilerFileUpload(event)">
             </div>
           </div>
 
           <div id="profiler-dropzone" class="relative rounded-xl border border-dark-700 bg-dark-900 transition-all">
-            <textarea id="profiler-sample-input" rows="8" placeholder="Paste genuine writing written by you or upload your past paper/thesis/essay here... (Drag-and-drop file supported)" class="w-full bg-transparent p-4 text-xs text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none leading-relaxed resize-none"></textarea>
+            <textarea id="profiler-sample-input" rows="8" placeholder="Type your rewritten response here, or paste genuine writing written by you (or drag-and-drop a .docx, .pdf, .txt file here)..." class="w-full bg-transparent p-4 text-xs text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none leading-relaxed resize-none"></textarea>
           </div>
 
           <div class="pt-2 flex items-center justify-between text-xs text-slate-400">
-            <span>Sample Word Count: <strong id="profiler-word-count" class="text-slate-200">0</strong> <span class="text-[11px] text-slate-500">(Optimal: 250–600 words)</span></span>
+            <span>Sample Word Count: <strong id="profiler-word-count" class="text-slate-200">0</strong> <span class="text-[11px] text-slate-500">(Optimal: 150–600 words)</span></span>
             <button type="button" onclick="clearProfilerSample()" class="text-slate-500 hover:text-red-400 text-xs">Clear Sample</button>
           </div>
         </div>
@@ -387,6 +467,9 @@
     </section>
 
   </main>
+
+  <!-- Hidden Container for PDF Rendering -->
+  <div id="pdf-render-container" class="hidden"></div>
 
   <!-- Toast Notification Container -->
   <div id="toast" class="fixed bottom-6 right-6 hidden bg-dark-800 border border-dark-700 px-4 py-3 rounded-xl shadow-2xl text-xs font-medium text-slate-200 z-50 flex items-center space-x-2">

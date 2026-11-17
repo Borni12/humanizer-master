@@ -5,14 +5,19 @@ let state = {
   profiles: [],
   selectedProfileId: '',
   lastAudit: null,
-  isProcessing: false
+  isProcessing: false,
+  currentDocumentStructure: null, // Holds parsed blocks {type, text}
+  humanizedBlocks: null,           // Holds transformed blocks {type, text}
+  originalFileName: ''
 };
 
 // Initialize app on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) lucide.createIcons();
   loadProfiles();
+  initCalibrationPrompts();
   setupEventListeners();
+  updateStudioVoiceMatch();
 });
 
 function setupEventListeners() {
@@ -20,6 +25,10 @@ function setupEventListeners() {
   if (inputArea) {
     inputArea.addEventListener('input', () => {
       updateCounts(inputArea.value, 'input');
+      // If user types manually, reset custom document structure to parse from text
+      state.currentDocumentStructure = window.DocumentStructureEngine ? window.DocumentStructureEngine.parseDocumentBlocks(inputArea.value) : null;
+      const tag = document.getElementById('input-doc-structure-tag');
+      if (tag) tag.classList.toggle('hidden', !state.currentDocumentStructure || state.currentDocumentStructure.length <= 1);
     });
 
     const dropZone = inputArea.parentElement;
@@ -151,6 +160,34 @@ function renderProfileSelect() {
   }
 }
 
+function onProfileChange() {
+  const select = document.getElementById('profile-select');
+  if (select) {
+    state.selectedProfileId = select.value;
+    updateStudioVoiceMatch();
+  }
+}
+
+function updateStudioVoiceMatch() {
+  const profile = getActiveProfile();
+  const outArea = document.getElementById('output-textarea');
+  const text = (outArea && outArea.value.trim()) ? outArea.value : "Sample text for calibration";
+  
+  if (window.VoiceCloneEvaluator && profile) {
+    const res = window.VoiceCloneEvaluator.evaluate(text, profile);
+    const pill = document.getElementById('studio-voice-match-pill');
+    if (pill) {
+      pill.innerText = `${res.overall_fidelity}% (${res.label})`;
+    }
+  }
+}
+
+function getActiveProfile() {
+  const select = document.getElementById('profile-select');
+  const profileId = select ? select.value : state.selectedProfileId;
+  return state.profiles.find(p => p.id === profileId) || state.profiles[0];
+}
+
 function renderProfilesLibrary() {
   const grid = document.getElementById('profiles-grid');
   if (!grid) return;
@@ -198,6 +235,7 @@ function selectProfileAndHumanize(profileId) {
   const select = document.getElementById('profile-select');
   if (select) select.value = profileId;
   switchTab('humanize');
+  updateStudioVoiceMatch();
   showToast('Profile activated!');
 }
 
@@ -212,6 +250,38 @@ function deleteCustomProfile(profileId) {
       loadProfiles();
       showToast('Profile deleted');
     } catch (e) {}
+  }
+}
+
+// ----------------- CALIBRATION PROMPT LOADER -----------------
+function initCalibrationPrompts() {
+  const select = document.getElementById('calibration-select');
+  if (!select || !window.CALIBRATION_PROMPTS) return;
+
+  select.innerHTML = '';
+  window.CALIBRATION_PROMPTS.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.title;
+    select.appendChild(opt);
+  });
+  onSelectCalibrationPrompt();
+}
+
+function onSelectCalibrationPrompt() {
+  const select = document.getElementById('calibration-select');
+  if (!select || !window.CALIBRATION_PROMPTS) return;
+
+  const found = window.CALIBRATION_PROMPTS.find(p => p.id === select.value) || window.CALIBRATION_PROMPTS[0];
+  const titleEl = document.getElementById('calibration-prompt-title');
+  const bodyEl = document.getElementById('calibration-prompt-body');
+
+  if (titleEl) titleEl.innerText = found.title;
+  if (bodyEl) bodyEl.innerText = `"${found.text}"`;
+
+  const profilerNotes = document.getElementById('profiler-notes-input');
+  if (profilerNotes && !profilerNotes.value.trim()) {
+    profilerNotes.value = `Rewritten calibration test based on ${found.topic}`;
   }
 }
 
@@ -294,10 +364,7 @@ function executeHumanize() {
     return;
   }
 
-  const profileSelect = document.getElementById('profile-select');
-  const profileId = profileSelect ? profileSelect.value : '';
-  const profile = state.profiles.find(p => p.id === profileId) || state.profiles[0];
-
+  const profile = getActiveProfile();
   const protocolMode = document.getElementById('protocol-mode-select') ? document.getElementById('protocol-mode-select').value : 'adaptive';
   const btn = document.getElementById('humanize-btn');
   const label = document.getElementById('humanize-btn-label');
@@ -305,15 +372,30 @@ function executeHumanize() {
 
   btn.disabled = true;
   btn.classList.add('processing-pulse');
-  label.innerText = 'Humanizing & Neutralizing AI Markers...';
+  label.innerText = 'Humanizing & Preserving Document Formatting...';
   statusPill.innerText = 'Transforming...';
   statusPill.className = 'text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-medium animate-pulse';
 
   setTimeout(() => {
     try {
       const beforeAudit = window.AIDetectionAuditor.audit(inputText);
-      const humanizedText = window.NativeAlgorithmicEngine.humanizeText(inputText, protocolMode, profile);
+      
+      // Ensure document structure is parsed
+      if (!state.currentDocumentStructure || state.currentDocumentStructure.length === 0) {
+        state.currentDocumentStructure = window.DocumentStructureEngine ? window.DocumentStructureEngine.parseDocumentBlocks(inputText) : [];
+      }
+
+      // Humanize block by block preserving structural formatting (headings, lists, paragraphs)
+      if (window.DocumentStructureEngine && state.currentDocumentStructure && state.currentDocumentStructure.length > 0) {
+        state.humanizedBlocks = window.DocumentStructureEngine.humanizeStructuredBlocks(state.currentDocumentStructure, protocolMode, profile);
+        var humanizedText = window.DocumentStructureEngine.blocksToMarkdown(state.humanizedBlocks);
+      } else {
+        var humanizedText = window.NativeAlgorithmicEngine.humanizeText(inputText, protocolMode, profile);
+        state.humanizedBlocks = window.DocumentStructureEngine.parseDocumentBlocks(humanizedText);
+      }
+
       const afterAudit = window.AIDetectionAuditor.audit(humanizedText);
+      const voiceFidelity = window.VoiceCloneEvaluator.evaluate(humanizedText, profile);
 
       const outArea = document.getElementById('output-textarea');
       const placeholder = document.getElementById('output-placeholder');
@@ -324,13 +406,19 @@ function executeHumanize() {
         updateCounts(humanizedText, 'output');
       }
 
-      renderMetrics(beforeAudit, afterAudit, {
+      renderMetrics(beforeAudit, afterAudit, voiceFidelity, {
         ai_risk_reduction: Math.round(Math.max(0, beforeAudit.ai_risk_score - afterAudit.ai_risk_score) * 10) / 10
       });
 
+      // Update studio voice match pill
+      const studioVoiceMatchPill = document.getElementById('studio-voice-match-pill');
+      if (studioVoiceMatchPill) {
+        studioVoiceMatchPill.innerText = `${voiceFidelity.overall_fidelity}% (${voiceFidelity.label})`;
+      }
+
       statusPill.innerText = 'Humanized & Safe';
       statusPill.className = 'text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-medium';
-      showToast('Text successfully humanized and anti-AI protected!');
+      showToast('Text successfully humanized with formatting preserved!');
     } catch (err) {
       showToast('Humanization Error: ' + err.message);
       statusPill.innerText = 'Error';
@@ -345,10 +433,24 @@ function executeHumanize() {
 }
 
 // ----------------- METRICS -----------------
-function renderMetrics(before, after, improvement) {
+function renderMetrics(before, after, voiceFidelity, improvement) {
   const panel = document.getElementById('metrics-panel');
   if (panel) panel.classList.remove('hidden');
 
+  // Metric 1: Voice Clone Fidelity
+  const fidelityVal = document.getElementById('metric-voice-fidelity');
+  const fidelityLabel = document.getElementById('metric-fidelity-label');
+  const fidelityBar = document.getElementById('metric-fidelity-bar');
+  const rhythmMatch = document.getElementById('metric-rhythm-match');
+  const vocabMatch = document.getElementById('metric-vocab-match');
+
+  if (fidelityVal) fidelityVal.innerText = `${voiceFidelity.overall_fidelity}%`;
+  if (fidelityLabel) fidelityLabel.innerText = voiceFidelity.label;
+  if (fidelityBar) fidelityBar.style.width = `${voiceFidelity.overall_fidelity}%`;
+  if (rhythmMatch) rhythmMatch.innerText = `${voiceFidelity.rhythm_match}%`;
+  if (vocabMatch) vocabMatch.innerText = `${voiceFidelity.vocab_match}%`;
+
+  // Metric 2: AI Risk
   const riskVal = document.getElementById('metric-ai-risk');
   const riskLabel = document.getElementById('metric-risk-label');
   const riskBar = document.getElementById('metric-risk-bar');
@@ -405,11 +507,12 @@ function runAuditOnly() {
     return;
   }
   const report = window.AIDetectionAuditor.audit(text);
-  renderMetrics(report, report, { ai_risk_reduction: 0 });
+  const voice = window.VoiceCloneEvaluator.evaluate(text, getActiveProfile());
+  renderMetrics(report, report, voice, { ai_risk_reduction: 0 });
   showToast(`Audit complete: Detected ${report.ai_risk_score}% AI risk.`);
 }
 
-// ----------------- CLIENT-SIDE FILE PARSING -----------------
+// ----------------- CLIENT-SIDE FILE PARSING & STRUCTURE -----------------
 function handleFileUpload(e) {
   const file = e.target.files[0];
   if (file) uploadFile(file);
@@ -417,13 +520,18 @@ function handleFileUpload(e) {
 
 function parseFileText(file, callback) {
   const ext = file.name.split('.').pop().toLowerCase();
+  state.originalFileName = file.name.replace(/\.[^/.]+$/, "");
 
   if (ext === 'docx' && window.mammoth) {
     const reader = new FileReader();
     reader.onload = function(evt) {
-      window.mammoth.extractRawText({ arrayBuffer: evt.target.result })
+      // Use convertToHtml to preserve exact headings, bullet lists, and paragraphs!
+      window.mammoth.convertToHtml({ arrayBuffer: evt.target.result })
         .then(function(result) {
-          callback(result.value);
+          const html = result.value;
+          state.currentDocumentStructure = window.DocumentStructureEngine.parseDocumentBlocks(html);
+          const plain = window.DocumentStructureEngine.blocksToMarkdown(state.currentDocumentStructure);
+          callback(plain, state.currentDocumentStructure);
         })
         .catch(function(err) {
           showToast('Failed to parse DOCX: ' + err.message);
@@ -443,7 +551,10 @@ function parseFileText(file, callback) {
           })));
         }
         Promise.all(countPromises).then(pagesText => {
-          callback(pagesText.join('\n\n'));
+          const rawText = pagesText.join('\n\n');
+          state.currentDocumentStructure = window.DocumentStructureEngine.parseDocumentBlocks(rawText);
+          const plain = window.DocumentStructureEngine.blocksToMarkdown(state.currentDocumentStructure);
+          callback(plain, state.currentDocumentStructure);
         });
       }).catch(err => {
         showToast('PDF parse error: ' + err.message);
@@ -454,7 +565,9 @@ function parseFileText(file, callback) {
     // Plain text / Markdown
     const reader = new FileReader();
     reader.onload = function(evt) {
-      callback(evt.target.result);
+      const rawText = evt.target.result;
+      state.currentDocumentStructure = window.DocumentStructureEngine.parseDocumentBlocks(rawText);
+      callback(rawText, state.currentDocumentStructure);
     };
     reader.readAsText(file);
   }
@@ -462,12 +575,19 @@ function parseFileText(file, callback) {
 
 function uploadFile(file) {
   showToast(`Reading ${file.name}...`);
-  parseFileText(file, (text) => {
+  parseFileText(file, (text, structure) => {
     const inputArea = document.getElementById('input-textarea');
     inputArea.value = text;
     updateCounts(text, 'input');
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    showToast(`Loaded ${words} words from ${file.name}!`);
+    
+    const tag = document.getElementById('input-doc-structure-tag');
+    if (tag) {
+      tag.classList.remove('hidden');
+      tag.innerText = `Structure Tracked (${structure.length} elements)`;
+    }
+    
+    showToast(`Loaded ${words} words & preserved document structure from ${file.name}!`);
   });
 }
 
@@ -514,7 +634,7 @@ function clearProfilerSample() {
   showToast('Sample cleared.');
 }
 
-// ----------------- EXPORT & COPY -----------------
+// ----------------- EXPORT & COPY ENGINE -----------------
 function toggleExportMenu() {
   const menu = document.getElementById('export-dropdown');
   if (menu) menu.classList.toggle('hidden');
@@ -531,27 +651,186 @@ function exportResult(format) {
   const menu = document.getElementById('export-dropdown');
   if (menu) menu.classList.add('hidden');
 
-  let mimeType = 'text/plain;charset=utf-8';
-  let content = text;
-  let filename = `Humanized_Passing_Document.${format}`;
+  const baseName = state.originalFileName ? `${state.originalFileName}_Humanized` : 'Humanized_Document';
+  const blocks = state.humanizedBlocks && state.humanizedBlocks.length > 0
+    ? state.humanizedBlocks
+    : window.DocumentStructureEngine.parseDocumentBlocks(text);
 
+  // 1. GENUINE .DOCX EXPORT (Preserves Headings, Lists, Paragraph Styles)
   if (format === 'docx') {
-    // Generate simple Word XML/HTML document for instant download
-    mimeType = 'application/msword;charset=utf-8';
-    content = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head><meta charset='utf-8'><title>Humanized Document</title></head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; font-size: 11pt;">
-        ${text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}
-      </body>
-      </html>
-    `;
-    filename = 'Humanized_Passing_Document.doc';
-  } else if (format === 'md') {
-    mimeType = 'text/markdown;charset=utf-8';
+    exportToDocx(blocks, `${baseName}.docx`);
   }
+  // 2. AUTHENTIC .PDF EXPORT (Print-Ready Styled PDF)
+  else if (format === 'pdf') {
+    exportToPdf(blocks, `${baseName}.pdf`);
+  }
+  // 3. MARKDOWN (.MD) EXPORT
+  else if (format === 'md') {
+    const mdContent = window.DocumentStructureEngine.blocksToMarkdown(blocks);
+    downloadBlob(mdContent, `${baseName}.md`, 'text/markdown;charset=utf-8');
+  }
+  // 4. PLAIN TEXT (.TXT) EXPORT
+  else {
+    const txtContent = window.DocumentStructureEngine.blocksToPlainText(blocks);
+    downloadBlob(txtContent, `${baseName}.txt`, 'text/plain;charset=utf-8');
+  }
+}
 
+// Generate genuine Microsoft Word .docx binary file
+function exportToDocx(blocks, filename) {
+  if (window.docx) {
+    showToast('Generating formatted Word document (.docx)...');
+    try {
+      const { Document, Paragraph, TextRun, HeadingLevel, Packer } = window.docx;
+
+      const children = blocks.map(b => {
+        if (b.type === 'h1') {
+          return new Paragraph({
+            text: b.text,
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 360, after: 160 }
+          });
+        } else if (b.type === 'h2') {
+          return new Paragraph({
+            text: b.text,
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 280, after: 120 }
+          });
+        } else if (b.type === 'h3') {
+          return new Paragraph({
+            text: b.text,
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 200, after: 100 }
+          });
+        } else if (b.type === 'bullet') {
+          return new Paragraph({
+            text: b.text,
+            bullet: { level: 0 },
+            spacing: { after: 100 }
+          });
+        } else if (b.type === 'numbered') {
+          return new Paragraph({
+            text: b.text,
+            bullet: { level: 0 },
+            spacing: { after: 100 }
+          });
+        } else {
+          return new Paragraph({
+            children: [
+              new TextRun({
+                text: b.text,
+                font: "Calibri",
+                size: 23
+              })
+            ],
+            spacing: { line: 276, after: 140 }
+          });
+        }
+      });
+
+      const doc = new Document({
+        sections: [{
+          properties: {
+            page: {
+              margin: {
+                top: 1440, // 1 inch
+                right: 1440,
+                bottom: 1440,
+                left: 1440
+              }
+            }
+          },
+          children: children
+        }]
+      });
+
+      Packer.toBlob(doc).then(blob => {
+        downloadBlobFile(blob, filename);
+        showToast(`Downloaded ${filename} with original formatting!`);
+      }).catch(err => {
+        fallbackDocxExport(blocks, filename);
+      });
+      return;
+    } catch (e) {
+      fallbackDocxExport(blocks, filename);
+      return;
+    }
+  }
+  fallbackDocxExport(blocks, filename);
+}
+
+function fallbackDocxExport(blocks, filename) {
+  const htmlBody = window.DocumentStructureEngine.blocksToHtml(blocks);
+  const docHtml = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head><meta charset='utf-8'><title>Humanized Document</title>
+    <style>
+      body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1e293b; }
+      h1 { font-size: 18pt; color: #0f172a; margin-top: 24px; margin-bottom: 12px; }
+      h2 { font-size: 14pt; color: #1e293b; margin-top: 18px; margin-bottom: 8px; }
+      h3 { font-size: 12pt; color: #334155; margin-top: 14px; margin-bottom: 6px; }
+      p { margin-bottom: 12px; }
+      ul, ol { margin-bottom: 12px; }
+      li { margin-bottom: 6px; }
+    </style>
+    </head>
+    <body>${htmlBody}</body>
+    </html>
+  `;
+  const blob = new Blob([docHtml], { type: 'application/msword;charset=utf-8' });
+  downloadBlobFile(blob, filename.replace(/\.docx$/, '.doc'));
+  showToast(`Downloaded formatted Word document!`);
+}
+
+// Generate print-ready styled PDF using html2pdf
+function exportToPdf(blocks, filename) {
+  showToast('Generating formatted PDF document...');
+  const htmlBody = window.DocumentStructureEngine.blocksToHtml(blocks);
+
+  const container = document.getElementById('pdf-render-container');
+  if (container) {
+    container.innerHTML = `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; line-height: 1.65; padding: 25px; background: #ffffff;">
+        <div style="border-bottom: 2px solid #10b981; padding-bottom: 12px; margin-bottom: 24px;">
+          <h1 style="margin: 0; font-size: 18pt; color: #0f172a;">${state.originalFileName ? state.originalFileName.toUpperCase() : 'HUMANIZED DOCUMENT'}</h1>
+          <p style="margin: 4px 0 0 0; font-size: 9pt; color: #64748b;">Humanized & Verified with HumanizerMaster • Zero AI Detection Risk</p>
+        </div>
+        ${htmlBody}
+      </div>
+    `;
+    container.classList.remove('hidden');
+
+    if (window.html2pdf) {
+      const opt = {
+        margin: [15, 15, 15, 15],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      window.html2pdf().from(container).set(opt).save().then(() => {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+        showToast(`Downloaded ${filename} successfully!`);
+      }).catch(err => {
+        container.classList.add('hidden');
+        showToast('PDF generation failed: ' + err.message);
+      });
+    } else {
+      window.print();
+      container.classList.add('hidden');
+    }
+  }
+}
+
+function downloadBlob(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType });
+  downloadBlobFile(blob, filename);
+  showToast(`Downloaded ${filename}!`);
+}
+
+function downloadBlobFile(blob, filename) {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -560,7 +839,6 @@ function exportResult(format) {
   a.click();
   a.remove();
   window.URL.revokeObjectURL(url);
-  showToast(`Downloaded ${filename}!`);
 }
 
 function copyOutput() {
@@ -581,6 +859,11 @@ function copyOutput() {
 function clearInput() {
   const inputArea = document.getElementById('input-textarea');
   if (inputArea) inputArea.value = '';
+  state.currentDocumentStructure = null;
+  state.humanizedBlocks = null;
+  state.originalFileName = '';
+  const tag = document.getElementById('input-doc-structure-tag');
+  if (tag) tag.classList.add('hidden');
   updateCounts('', 'input');
 }
 
